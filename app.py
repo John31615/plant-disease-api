@@ -7,7 +7,12 @@ from PIL import Image
 import io
 
 # Load your trained model
-model = load_model("plant_disease_model.h5")  # or .keras
+model = None
+
+@app.on_event("startup")
+def load_ml_model():
+    global model
+    model = load_model("plant_disease_model.h5")
 
 class_names = [
     "Tomato_Bacterial_spot",
