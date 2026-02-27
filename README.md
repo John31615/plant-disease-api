@@ -46,7 +46,7 @@ plant-disease-api/
 1. Clone the repository:
 
 ```
-git clone https://github.com/YOUR_USERNAME/plant-disease-api.git
+git clone https://github.com/John31615/plant-disease-api.git
 cd plant-disease-api
 ```
 
