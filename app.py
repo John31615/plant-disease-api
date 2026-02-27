@@ -1,18 +1,31 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import JSONResponse
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
 import numpy as np
 from PIL import Image
+import tensorflow as tf
 import io
 
-# Load your trained model
-model = None
+app = FastAPI(title="Plant Disease Detection API")
 
+# Global interpreter
+interpreter = None
+input_details = None
+output_details = None
+
+
+# Load TFLite model on startup
 @app.on_event("startup")
-def load_ml_model():
-    global model
-    model = load_model("plant_disease_model.h5")
+def load_tflite_model():
+    global interpreter, input_details, output_details
+
+    interpreter = tf.lite.Interpreter(model_path="plant_disease_model.tflite")
+    interpreter.allocate_tensors()
+
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    print("TFLite model loaded successfully!")
+
 
 class_names = [
     "Tomato_Bacterial_spot",
@@ -27,8 +40,6 @@ class_names = [
     "Tomato_healthy"
 ]
 
-
-# Remedies
 remedies = {
     "Tomato_Bacterial_spot": "Remove infected leaves and apply copper-based bactericide.",
     "Tomato_Early_blight": "Remove infected leaves and apply fungicide.",
@@ -43,33 +54,41 @@ remedies = {
 }
 
 
-# Initialize FastAPI
-app = FastAPI(title="Plant Disease Detection API")
-
 @app.get("/")
 async def root():
-    return {"message": "Plant Disease Detection API is running! Add /docs/ at the end of URL then USE /Predict/ to detect diseases."}
+    return {
+        "message": "Plant Disease Detection API is running! Add /docs/ to test."
+    }
 
-# Prediction endpoint
+
 @app.post("/predict/")
 async def predict(file: UploadFile = File(...)):
     contents = await file.read()
+
     img = Image.open(io.BytesIO(contents)).convert("RGB")
     img = img.resize((224, 224))
-    img_array = np.array(img) / 255.0
+
+    img_array = np.array(img, dtype=np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    preds = model.predict(img_array)
+    # Set input tensor
+    interpreter.set_tensor(input_details[0]['index'], img_array)
+
+    # Run inference
+    interpreter.invoke()
+
+    # Get predictions
+    preds = interpreter.get_tensor(output_details[0]['index'])
+
     pred_index = np.argmax(preds)
     disease = class_names[pred_index]
     confidence = float(np.max(preds))
     remedy = remedies.get(disease, "No remedy available.")
 
-    warning = ""
     if confidence < 0.7:
-        warning = "⚠️ Low confidence. Consider re-checking the leaf or consult an expert."
+        warning = "⚠️ Low confidence. Consider re-checking the leaf."
     else:
-       warning = "✅ Prediction confident."
+        warning = "✅ Prediction confident."
 
     return JSONResponse(content={
         "disease": disease,
