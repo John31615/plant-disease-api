@@ -7,9 +7,8 @@ from PIL import Image
 import io
 
 # Load your trained model
-model = load_model("plant_disease_model.keras")  
+model = load_model("plant_disease_model.h5")  # or .keras
 
- 
 class_names = [
     "Tomato_Bacterial_spot",
     "Tomato_Early_blight",
@@ -54,13 +53,13 @@ async def predict(file: UploadFile = File(...)):
     img = img.resize((224, 224))
     img_array = np.array(img) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
-    
+
     preds = model.predict(img_array)
     pred_index = np.argmax(preds)
     disease = class_names[pred_index]
     confidence = float(np.max(preds))
     remedy = remedies.get(disease, "No remedy available.")
-    
+
     warning = ""
     if confidence < 0.7:
         warning = "⚠️ Low confidence. Consider re-checking the leaf or consult an expert."
