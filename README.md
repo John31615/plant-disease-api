@@ -1,4 +1,4 @@
-# 🌱 Plant Disease Detection API
+# 🌱 Plant Disease Detection API (Stand Alone)
 
 A FastAPI-based Machine Learning API that detects tomato plant diseases from leaf images using a trained TensorFlow model.
 
